@@ -301,7 +301,40 @@ którego przekładanie podów i tak nie naprawi. Rozwiązaniem jest ponowne uruc
 HPA pokazuje `cpu: <unknown>` — kind nie ma `metrics-server`. Na klastrze z metrykami
 skalowanie działa; tutaj widać samą konfigurację.
 
-🔴 **To był klaster lokalny.** Na AWS nic nie zostało wdrożone.
+### Uruchomione na AWS
+
+Powyższe dotyczy klastra lokalnego. **28.08.2026 ten sam zestaw manifestów pojechał
+na AWS** — instancja EC2 z k3s postawiona Terraformem z repozytorium
+[alerts-infra](https://github.com/Sitkowski01/alerts-infra), region `eu-central-1`.
+
+```
+$ kubectl -n price-alerts get pods
+pod/postgres-768dbdbb88-szhvr          1/1   Running     0   3m56s
+pod/price-alerts-api-b67b8f585-4nq86   1/1   Running     0   48s
+pod/price-alerts-api-b67b8f585-c5qtt   1/1   Running     0   48s
+pod/price-alerts-migrate-p4zgr         0/1   Completed   0   61s
+
+$ kubectl -n price-alerts logs job/price-alerts-migrate
+INFO [alembic.runtime.migration] Running upgrade -> 0001, Tabele alertów i uruchomień
+```
+
+Scenariusz przeszedł przez `Service`, z wnętrza klastra, na dwóch replikach:
+
+```
+readyz:            {"status":"ok","database":"reachable"}
+utworzenie alertu: HTTP 201
+bez klucza:        HTTP 401
+notowanie 98.40:   {"evaluated":1,"triggered":[]}
+notowanie 101.10:  {"evaluated":1,"triggered":[{"status":"triggered", ...}]}
+```
+
+⚠ Instancja została **wyłączona po zrobieniu zrzutów** (`terraform destroy`).
+To demo, nie działająca usługa — adres z tamtego uruchomienia już nie odpowiada.
+
+Jedna rzecz, którą to wdrożenie zweryfikowało, a lokalny klaster nie:
+**`t3.micro` nie udźwignie k3s.** Przy 1 GB RAM sam serwer k3s zajmował 553 MB,
+wolnej pamięci zostawało 54 MB, obciążenie skakało do 9, a API nie wstawało
+nawet po pół godzinie. Dopiero `t3.small` z 2 GB doprowadził węzeł do `Ready`.
 
 Decyzje, które widać w manifestach:
 
