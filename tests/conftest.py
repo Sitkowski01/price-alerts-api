@@ -1,3 +1,4 @@
+import asyncio
 import os
 from collections.abc import AsyncIterator
 
@@ -5,8 +6,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
-# Ustawiamy srodowisko zanim zaimportujemy aplikacje — konfiguracja czyta je przy imporcie.
+# Srodowisko ustawiamy przed importem aplikacji — konfiguracja czyta je przy imporcie.
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://postgres:postgres@localhost:5432/price_alerts_test",
@@ -19,19 +21,33 @@ from app.main import app  # noqa: E402
 from app.models import Base  # noqa: E402
 
 API_KEY = os.environ["API_KEY"]
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 
-@pytest.fixture(scope="session")
-def anyio_backend() -> str:
-    return "asyncio"
+def _zaloz_schemat() -> None:
+    """Schemat zakładamy raz, w osobnej pętli, zanim ruszą testy.
+
+    Silnik nie może żyć dłużej niż pętla zdarzeń, w której powstał — połączenie
+    asyncpg jest z nią związane. Stąd osobny, krótkotrwały silnik tutaj
+    i nowy silnik na każdy test poniżej.
+    """
+
+    async def _uruchom() -> None:
+        silnik = create_async_engine(DATABASE_URL, poolclass=NullPool)
+        async with silnik.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+        await silnik.dispose()
+
+    asyncio.run(_uruchom())
 
 
-@pytest.fixture(scope="session")
-async def engine():
-    silnik = create_async_engine(os.environ["DATABASE_URL"], future=True)
-    async with silnik.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+_zaloz_schemat()
+
+
+@pytest.fixture
+async def engine() -> AsyncIterator:
+    silnik = create_async_engine(DATABASE_URL, poolclass=NullPool)
     yield silnik
     await silnik.dispose()
 

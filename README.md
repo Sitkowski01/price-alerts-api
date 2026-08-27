@@ -105,6 +105,54 @@ curl -X POST localhost:8000/v1/quotes \
   -d "{\"ticker\":\"CDR\",\"price\":\"101.10\",\"quote_ts\":\"2026-08-27T10:05:00Z\"}"
 ```
 
+## Wynik uruchomienia
+
+Poniżej faktyczne odpowiedzi serwisu podniesionego przez `docker compose up`
+(oba kontenery raportują `healthy`).
+
+```
+$ curl -s localhost:8000/readyz
+{"status":"ok","database":"reachable"}
+
+$ curl -s -X POST localhost:8000/v1/alerts -H "X-API-Key: $KLUCZ" ... -d '{"ticker":"cdr", ...}'
+{"id":"34e163dc-...","ticker":"CDR","direction":"above","threshold":"100.000000",
+ "status":"armed","note":"pozycja dluga", ...}
+
+$ # ten sam POST bez naglowka X-API-Key
+HTTP 401
+
+$ # notowanie ponizej progu
+{"ticker":"CDR","price":"98.40","evaluated":1,"triggered":[]}
+
+$ # notowanie powyzej progu
+{"ticker":"CDR","price":"101.10","evaluated":1,
+ "triggered":[{"id":"34e163dc-...","status":"triggered", ...}]}
+
+$ curl -s localhost:8000/v1/alerts/34e163dc-.../triggers
+[{"alert_id":"34e163dc-...","price":"101.100000","quote_ts":"2026-08-27T10:05:00Z", ...}]
+```
+
+Ticker podany jako `cdr` wrócił jako `CDR`, próg zapisał się z pełną precyzją,
+a alert przeszedł w `triggered` dopiero przy drugim notowaniu.
+
+Metryki są etykietowane wzorcem trasy, nie konkretnym adresem — inaczej każdy
+identyfikator zakładałby w Prometheusie osobną serię czasową:
+
+```
+http_requests_total{method="POST",path="/v1/alerts",status="201"} 1.0
+http_requests_total{method="POST",path="/v1/alerts",status="401"} 1.0
+http_requests_total{method="POST",path="/v1/quotes",status="200"} 2.0
+http_requests_total{method="GET",path="/v1/alerts/{alert_id}/triggers",status="200"} 1.0
+```
+
+Logi wychodzą w JSON, z czasem obsługi i identyfikatorem zapytania:
+
+```json
+{"ts": "2026-08-27T13:23:24+00:00", "level": "INFO", "logger": "price_alerts",
+ "message": "zapytanie obsłużone", "method": "GET", "path": "/metrics",
+ "status_code": 200, "duration_ms": 3.14, "request_id": "2011c959-..."}
+```
+
 ## Testy
 
 ```bash

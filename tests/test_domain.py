@@ -68,3 +68,15 @@ class TestPrecyzja:
         # Decimal, nie float: 0.1 + 0.2 we floatach nie jest rowne 0.3.
         prog = regula(Direction.ABOVE, "0.3")
         assert should_trigger(prog, Decimal("0.1") + Decimal("0.2")) is True
+
+
+class TestRegulaZSurowychDanych:
+    def test_stringi_zamiast_enumow_dzialaja_tak_samo(self):
+        # Regresja: wartosci odczytane z bazy bywaja zwyklymi stringami.
+        # Porownanie przez tozsamosc (`is`) dawalo tu cicho falsz i zaden
+        # alert sie nie uruchamial.
+        regula_surowa = AlertRule(
+            ticker="CDR", direction="above", threshold=Decimal("100"), status="armed"
+        )
+        assert should_trigger(regula_surowa, Decimal("150")) is True
+        assert should_trigger(regula_surowa, Decimal("50")) is False

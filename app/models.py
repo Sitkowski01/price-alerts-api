@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.domain import AlertStatus, Direction
+from app.types import StrEnumType
 
 
 class Base(DeclarativeBase):
@@ -29,10 +30,10 @@ class Alert(Base):
         PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     ticker: Mapped[str] = mapped_column(String(16), nullable=False)
-    direction: Mapped[Direction] = mapped_column(String(8), nullable=False)
+    direction: Mapped[Direction] = mapped_column(StrEnumType(Direction, 8), nullable=False)
     threshold: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
     status: Mapped[AlertStatus] = mapped_column(
-        String(16), nullable=False, default=AlertStatus.ARMED
+        StrEnumType(AlertStatus, 16), nullable=False, default=AlertStatus.ARMED
     )
     note: Mapped[str | None] = mapped_column(String(280), nullable=True)
 

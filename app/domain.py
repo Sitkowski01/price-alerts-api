@@ -39,9 +39,11 @@ def should_trigger(rule: AlertRule, price: Decimal) -> bool:
     Próg jest domknięty z obu stron: cena równa progowi uruchamia alert.
     Alert, który nie jest uzbrojony, nie reaguje na nic.
     """
-    if rule.status is not AlertStatus.ARMED:
+    # Porownanie przez wartosc, nie tozsamosc: StrEnum rowna sie swojemu
+    # stringowi, wiec regula zbudowana z surowych danych tez zadziala.
+    if rule.status != AlertStatus.ARMED:
         return False
 
-    if rule.direction is Direction.ABOVE:
+    if rule.direction == Direction.ABOVE:
         return price >= rule.threshold
     return price <= rule.threshold
