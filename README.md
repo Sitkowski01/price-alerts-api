@@ -16,6 +16,9 @@ Klient webowy do tego API: [**price-alerts-web**](https://github.com/Sitkowski01
 Źródło notowań: [**quote-stream**](https://github.com/Sitkowski01/quote-stream)
 — potok w Go, który czyta je z Kafki i wysyła tutaj przez `POST /v1/quotes`.
 
+Infrastruktura: [**alerts-infra**](https://github.com/Sitkowski01/alerts-infra)
+— Terraform stawiający klaster k3s na EC2 pod te manifesty.
+
 ## Model
 
 Dwie tabele. `alerts` to reguła, `triggers` to historia jej zadziałań.
