@@ -1,0 +1,29 @@
+# Konfiguracja skanowania sekretów (ggshield).
+#
+# W tym repozytorium NIE MA prawdziwych poświadczeń. Pliki poniżej zawierają
+# wyłącznie zaślepki, które są tam celowo — bez nich dokumentacja i testy
+# przestałyby działać. Wykluczamy je, żeby prawdziwe znalezisko nie utonęło
+# w powtarzalnym szumie.
+#
+# Uwaga: ten plik działa dla skanów ggshield (CI, pre-commit). Incydenty
+# widoczne w panelu GitGuardian z integracji GitHub zamyka się w interfejsie.
+version: 2
+
+secret:
+  ignored-paths:
+    # `postgres:postgres` — konwencja lokalnej bazy deweloperskiej
+    - ".env.example"
+    - "docker-compose.yml"
+    - "tests/conftest.py"
+    - "k8s/dev/postgres.yaml"
+
+    # Baza w usłudze runnera: kontener powstaje i znika w ramach jednego
+    # przebiegu CI, nie jest osiągalny z zewnątrz
+    - ".github/workflows/ci.yml"
+
+    # Przykłady w dokumentacji: `user:haslo`, `zmien-mnie`, `klucz-klastrowy`
+    - "README.md"
+
+  # Progi mają zostać ostre — nie wyciszamy detektorów globalnie,
+  # tylko konkretne ścieżki powyżej.
+  show-secrets: false

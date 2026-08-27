@@ -309,9 +309,12 @@ Decyzje, które widać w manifestach:
   capabilities. `/tmp` jest podmontowany osobno, bo inaczej nie ma gdzie pisać.
 - **`maxUnavailable: 0`** — wdrożenie nie zabiera mocy przerobowej, zanim nowy pod
   zgłosi gotowość.
-- **Sekret nie jest w repozytorium.** `11-secret.example.yaml` to wzór z instrukcją;
-  na klastrze wartości wchodzą przez `kubectl create secret`, External Secrets
-  albo AWS Secrets Manager.
+- **W repozytorium nie ma manifestu `Secret` — nawet przykładowego.** Plik
+  `kind: Secret` z wypełnionym `stringData` to dokładnie ten kształt, którego
+  szukają skanery sekretów; trzymanie go w repo zapala alarm przy każdym pushu,
+  choćby wartości były zmyślone. Sekret zakłada się komendą `kubectl create secret`
+  (wyżej), a na klastrze produkcyjnym przez External Secrets Operator,
+  Sealed Secrets albo AWS Secrets Manager.
 
 ### Uwaga o kosztach na AWS
 
