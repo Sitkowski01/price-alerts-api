@@ -1,5 +1,7 @@
 # Price Alerts API
 
+[![CI](https://github.com/Sitkowski01/price-alerts-api/actions/workflows/ci.yml/badge.svg)](https://github.com/Sitkowski01/price-alerts-api/actions/workflows/ci.yml)
+
 Serwis alertów cenowych: użytkownik zakłada regułę („daj znać, gdy CDR przebije 100 zł"),
 a serwis ocenia napływające notowania i zapisuje historię uruchomień.
 
