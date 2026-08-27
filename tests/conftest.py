@@ -1,4 +1,3 @@
-import asyncio
 import os
 from collections.abc import AsyncIterator
 
@@ -24,30 +23,29 @@ API_KEY = os.environ["API_KEY"]
 DATABASE_URL = os.environ["DATABASE_URL"]
 
 
-def _zaloz_schemat() -> None:
-    """Schemat zakładamy raz, w osobnej pętli, zanim ruszą testy.
-
-    Silnik nie może żyć dłużej niż pętla zdarzeń, w której powstał — połączenie
-    asyncpg jest z nią związane. Stąd osobny, krótkotrwały silnik tutaj
-    i nowy silnik na każdy test poniżej.
-    """
-
-    async def _uruchom() -> None:
-        silnik = create_async_engine(DATABASE_URL, poolclass=NullPool)
-        async with silnik.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
-        await silnik.dispose()
-
-    asyncio.run(_uruchom())
-
-
-_zaloz_schemat()
+# Schemat zakladamy raz, przy pierwszym tescie, ktory faktycznie prosi o baze.
+# Nie przy imporcie modulu — inaczej testy domenowe, ktore bazy nie potrzebuja,
+# nie daloby sie uruchomic bez postawionego Postgresa.
+_schemat_gotowy = False
 
 
 @pytest.fixture
 async def engine() -> AsyncIterator:
+    """Silnik na każdy test osobno.
+
+    Silnik nie może żyć dłużej niż pętla zdarzeń, w której powstał — połączenie
+    asyncpg jest z nią związane, a pytest-asyncio daje każdemu testowi własną pętlę.
+    """
+    global _schemat_gotowy
+
     silnik = create_async_engine(DATABASE_URL, poolclass=NullPool)
+
+    if not _schemat_gotowy:
+        async with silnik.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+        _schemat_gotowy = True
+
     yield silnik
     await silnik.dispose()
 
