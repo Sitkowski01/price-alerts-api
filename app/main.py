@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 from app.config import get_settings
@@ -32,6 +33,17 @@ app = FastAPI(
     description="Alerty cenowe: reguły progowe i ocena napływających notowań.",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+
+# Klient webowy (price-alerts-web) chodzi po przegladarce, wiec bez tego
+# kazde zapytanie konczy sie odmowa jeszcze przed wyslaniem.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_settings().cors_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key"],
 )
 
 
