@@ -10,6 +10,9 @@ Projekt jest celowo mały pod względem domeny, a rozbudowany pod względem tego
 co odróżnia usługę produkcyjną od skryptu: migracje, sondy, metryki, kontrola dostępu,
 idempotencja i zachowanie przy równoległych zapytaniach.
 
+Klient webowy do tego API: [**price-alerts-web**](https://github.com/Sitkowski01/price-alerts-web)
+— Vue 3 z Composition API i Pinią.
+
 ## Model
 
 Dwie tabele. `alerts` to reguła, `triggers` to historia jej zadziałań.
