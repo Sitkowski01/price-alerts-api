@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: price-alerts-api
+  namespace: price-alerts
+  annotations:
+    # Na k3s domyslnym kontrolerem jest Traefik; na EKS zwykle ingress-nginx albo ALB.
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+    - host: alerts.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: price-alerts-api
+                port:
+                  name: http

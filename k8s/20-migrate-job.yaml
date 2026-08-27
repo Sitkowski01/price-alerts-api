@@ -1,0 +1,34 @@
+# Migracje jako osobne zadanie, nie initContainer przy każdej replice —
+# inaczej trzy pody ruszyłyby `alembic upgrade` równolegle.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: price-alerts-migrate
+  namespace: price-alerts
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      name: price-alerts-migrate
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+      containers:
+        - name: migrate
+          image: price-alerts-api:0.1.0
+          imagePullPolicy: IfNotPresent
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: price-alerts-config
+            - secretRef:
+                name: price-alerts-secret
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi

@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Środowisko
+.env
+.env.local
+.env.*.local
+
+# Narzędzia
+.idea/
+.vscode/
