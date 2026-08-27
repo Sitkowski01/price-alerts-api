@@ -13,6 +13,9 @@ idempotencja i zachowanie przy równoległych zapytaniach.
 Klient webowy do tego API: [**price-alerts-web**](https://github.com/Sitkowski01/price-alerts-web)
 — Vue 3 z Composition API i Pinią.
 
+Źródło notowań: [**quote-stream**](https://github.com/Sitkowski01/quote-stream)
+— potok w Go, który czyta je z Kafki i wysyła tutaj przez `POST /v1/quotes`.
+
 ## Model
 
 Dwie tabele. `alerts` to reguła, `triggers` to historia jej zadziałań.
