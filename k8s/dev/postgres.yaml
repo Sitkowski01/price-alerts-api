@@ -1,0 +1,63 @@
+# PostgreSQL do lokalnej próby na klastrze (kind, minikube, k3s).
+# NIE na produkcję — tam baza to usługa zarządzana (RDS, Cloud SQL),
+# a nie pod bez trwałego wolumenu.
+#
+# Uwaga: emptyDir znika razem z podem. Po restarcie tego poda schemat
+# trzeba założyć od nowa (`kubectl delete job price-alerts-migrate`,
+# potem ponownie `kubectl apply -f k8s/20-migrate-job.yaml`).
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: price-alerts
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: price-alerts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_DB
+              value: price_alerts
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "price_alerts"]
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: dane
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: dane
+          emptyDir: {}

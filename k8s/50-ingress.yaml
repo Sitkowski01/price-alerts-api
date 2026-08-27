@@ -3,10 +3,10 @@ kind: Ingress
 metadata:
   name: price-alerts-api
   namespace: price-alerts
-  annotations:
-    # Na k3s domyslnym kontrolerem jest Traefik; na EKS zwykle ingress-nginx albo ALB.
-    kubernetes.io/ingress.class: traefik
 spec:
+  # Na k3s domyslnym kontrolerem jest Traefik; na EKS zwykle ingress-nginx albo ALB.
+  # Adnotacja kubernetes.io/ingress.class jest wycofana — od 1.18 sluzy do tego to pole.
+  ingressClassName: traefik
   rules:
     - host: alerts.local
       http:

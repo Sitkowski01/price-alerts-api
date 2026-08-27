@@ -206,6 +206,94 @@ kubectl apply -f k8s/30-deployment.yaml -f k8s/40-service.yaml \
               -f k8s/50-ingress.yaml -f k8s/60-hpa.yaml
 ```
 
+### Szybka próba lokalnie (kind)
+
+Bez chmury i bez kosztów. `k8s/dev/postgres.yaml` podnosi bazę w klastrze —
+wyłącznie do prób, na produkcji baza jest usługą zarządzaną.
+
+```bash
+kind create cluster --name alerty
+docker build -t price-alerts-api:0.1.0 .
+kind load docker-image price-alerts-api:0.1.0 --name alerty
+
+kubectl apply -f k8s/00-namespace.yaml -f k8s/dev/postgres.yaml
+kubectl -n price-alerts wait --for=condition=available deployment/postgres --timeout=180s
+
+kubectl -n price-alerts create secret generic price-alerts-secret \
+  --from-literal=DATABASE_URL="postgresql+asyncpg://postgres:postgres@postgres:5432/price_alerts" \
+  --from-literal=API_KEY="klucz-klastrowy"
+
+kubectl apply -f k8s/10-configmap.yaml -f k8s/20-migrate-job.yaml
+kubectl -n price-alerts wait --for=condition=complete job/price-alerts-migrate --timeout=180s
+kubectl apply -f k8s/30-deployment.yaml -f k8s/40-service.yaml -f k8s/60-hpa.yaml
+
+kubectl -n price-alerts port-forward svc/price-alerts-api 8080:80
+kind delete cluster --name alerty      # sprzątanie
+```
+
+### Uruchomione na klastrze
+
+Manifesty nie są teorią — poniżej stan po ich zastosowaniu na klastrze **kind**
+(Kubernetes 1.34, lokalnie w Dockerze). Ta sama sekwencja działa na k3s;
+na EKS zmienia się tylko klasa Ingressa i źródło sekretów.
+
+```
+$ kubectl -n price-alerts get pods,svc,deploy,job,hpa
+NAME                                    READY   STATUS      RESTARTS   AGE
+pod/postgres-f68d96f6b-dkqht            1/1     Running     0          2m16s
+pod/price-alerts-api-6686cf5778-2dfgn   1/1     Running     0          31s
+pod/price-alerts-api-6686cf5778-fmmqj   1/1     Running     0          23s
+pod/price-alerts-migrate-99tps          0/1     Completed   0          45s
+
+service/postgres           ClusterIP   10.96.248.64    5432/TCP
+service/price-alerts-api   ClusterIP   10.96.175.128   80/TCP
+
+deployment.apps/price-alerts-api   2/2     2            2
+job.batch/price-alerts-migrate     Complete   1/1     10s
+
+horizontalpodautoscaler/price-alerts-api  Deployment/price-alerts-api  2  6  2
+```
+
+Migracje wykonały się jako `Job`, zanim ruszyły pody aplikacji:
+
+```
+$ kubectl -n price-alerts logs job/price-alerts-migrate
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001, Tabele alertów i uruchomień
+```
+
+Pełny scenariusz przeszedł przez `Service`, z wnętrza klastra, na dwóch replikach —
+łącznie z odrzuceniem zapisu bez nagłówka `X-API-Key` (HTTP 401) i uruchomieniem
+alertu dopiero przy drugim notowaniu.
+
+#### Sondy w praktyce
+
+Podział liveness/readiness był sprawdzony, a nie tylko opisany. Po wyłączeniu bazy
+(`kubectl scale deployment/postgres --replicas=0`):
+
+```
+price-alerts-api-...-8qxsl   READY=0/1   STATUS=Running   RESTARTS=0
+price-alerts-api-...-grcv9   READY=0/1   STATUS=Running   RESTARTS=0
+```
+
+Pody wypadły z endpointów `Service` (`notReadyAddresses`), więc ruch przestał do nich
+trafiać — ale **żaden nie został zrestartowany**. Po powrocie bazy obie repliki wróciły
+do `READY 1/1`, wciąż z zerem restartów. Gdyby `/healthz` sprawdzał PostgreSQL,
+Kubernetes ubiłby tu dwa całkowicie zdrowe procesy.
+
+#### Czego readiness nie łapie
+
+`/readyz` odpowiada na pytanie „czy ten pod dosięga bazy", a nie „czy baza jest poprawna".
+Po restarcie deweloperskiego Postgresa (`emptyDir`, brak trwałości) `SELECT 1` nadal
+przechodził, więc pody raportowały gotowość, a `/v1/alerts` zwracało 500 — schemat
+zniknął razem z podem. To świadomy wybór: brakująca migracja jest problemem wdrożenia,
+którego przekładanie podów i tak nie naprawi. Rozwiązaniem jest ponowne uruchomienie
+`Joba` z migracjami, nie ostrzejsza sonda.
+
+HPA pokazuje `cpu: <unknown>` — kind nie ma `metrics-server`. Na klastrze z metrykami
+skalowanie działa; tutaj widać samą konfigurację.
+
+🔴 **To był klaster lokalny.** Na AWS nic nie zostało wdrożone.
+
 Decyzje, które widać w manifestach:
 
 - **Liveness nie dotyka bazy, readiness dotyka.** Gdyby `/healthz` sprawdzał PostgreSQL,
