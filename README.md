@@ -336,7 +336,7 @@ Jedna rzecz, którą to wdrożenie zweryfikowało, a lokalny klaster nie:
 wolnej pamięci zostawało 54 MB, obciążenie skakało do 9, a API nie wstawało
 nawet po pół godzinie. Dopiero `t3.small` z 2 GB doprowadził węzeł do `Ready`.
 
-Decyzje, które widać w manifestach:
+### Decyzje, o które warto zapytać
 
 - **Liveness nie dotyka bazy, readiness dotyka.** Gdyby `/healthz` sprawdzał PostgreSQL,
   chwilowa awaria bazy kazałaby Kubernetesowi restartować całkiem zdrowe pody.
@@ -354,13 +354,10 @@ Decyzje, które widać w manifestach:
   choćby wartości były zmyślone. Sekret zakłada się komendą `kubectl create secret`
   (wyżej), a na klastrze produkcyjnym przez External Secrets Operator,
   Sealed Secrets albo AWS Secrets Manager.
-
-### Uwaga o kosztach na AWS
-
-**EKS jest płatny za sam działający control plane, nawet przy zerze podów.**
-Do pokazania działającego klastra wystarczy **k3s na jednej instancji EC2**
-z darmowego pułapu. Zanim cokolwiek odpalisz, ustaw alert budżetowy,
-a instancję wyłącz po zrobieniu zrzutów ekranu.
+- **Na AWS klaster to k3s, nie EKS.** Zarządzany control plane EKS płaci się za sam
+  fakt istnienia, nawet przy zerze podów. Te manifesty nie widzą różnicy — idą na k3s
+  tak samo jak na kind. Cała infrastruktura i powody stojące za jej kształtem są
+  w [alerts-infra](https://github.com/Sitkowski01/alerts-infra).
 
 ## CI
 
