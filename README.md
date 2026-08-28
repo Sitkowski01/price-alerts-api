@@ -336,7 +336,7 @@ Jedna rzecz, którą to wdrożenie zweryfikowało, a lokalny klaster nie:
 wolnej pamięci zostawało 54 MB, obciążenie skakało do 9, a API nie wstawało
 nawet po pół godzinie. Dopiero `t3.small` z 2 GB doprowadził węzeł do `Ready`.
 
-### Decyzje, o które warto zapytać
+### Decyzje projektowe
 
 - **Liveness nie dotyka bazy, readiness dotyka.** Gdyby `/healthz` sprawdzał PostgreSQL,
   chwilowa awaria bazy kazałaby Kubernetesowi restartować całkiem zdrowe pody.
