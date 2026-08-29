@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 
 from app.config import get_settings
 from app.deps import ApiKeyDep, SessionDep
-from app.domain import AlertStatus, Direction
+from app.domain import AlertStatus, Direction, normalize_ticker
 from app.models import Alert, Trigger
 from app.schemas import AlertCreate, AlertPage, AlertRead, AlertUpdate, TriggerRead
 
@@ -48,7 +48,9 @@ async def lista(
 
     warunki = []
     if ticker:
-        warunki.append(Alert.ticker == ticker.strip().upper())
+        # Ta sama normalizacja co przy zapisie — inaczej filtr rozjedzie sie
+        # z tym, co faktycznie stoi w bazie, gdy regula normalizacji sie zmieni.
+        warunki.append(Alert.ticker == normalize_ticker(ticker))
     if status_filter:
         warunki.append(Alert.status == status_filter)
     if direction:
@@ -56,7 +58,14 @@ async def lista(
 
     total = await session.scalar(select(func.count()).select_from(Alert).where(*warunki))
     wynik = await session.scalars(
-        select(Alert).where(*warunki).order_by(Alert.created_at.desc()).limit(limit).offset(offset)
+        # Drugie kryterium porzadku jest konieczne: dwa alerty z tym samym
+        # created_at ustawialyby sie losowo, wiec przy stronicowaniu jeden
+        # potrafil pojawic sie dwa razy, a inny w ogole nie wyjsc.
+        select(Alert)
+        .where(*warunki)
+        .order_by(Alert.created_at.desc(), Alert.id.desc())
+        .limit(limit)
+        .offset(offset)
     )
 
     return AlertPage(
@@ -104,7 +113,7 @@ async def historia(
     wynik = await session.scalars(
         select(Trigger)
         .where(Trigger.alert_id == alert_id)
-        .order_by(Trigger.created_at.desc())
+        .order_by(Trigger.created_at.desc(), Trigger.id.desc())
         .limit(limit)
     )
     return list(wynik)
